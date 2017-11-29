@@ -16,4 +16,4 @@ node {
      }
   }
 }
-apk update && apk upgrade && apk add bash && bash &&
+
