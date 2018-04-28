@@ -1,5 +1,5 @@
 node {
-  def myGradleContainer = docker.image('anapsix/alpine-java:8_jdk)
+  def myGradleContainer = docker.image('anapsix/alpine-java:8_jdk')
   myGradleContainer.pull()
   stage('prep') {
     checkout scm
