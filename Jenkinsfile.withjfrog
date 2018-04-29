@@ -1,29 +1,27 @@
 node {
-  def server = Artifactory.server 'newtechacademy.jfrog.io'
-  def myGradleContainer = docker.image('gradle:jdk8-alpine')
-  myGradleContainer.pull()
-  stage('prep') {
-    checkout scm
-  }
-  stage('build') {
-     myGradleContainer.inside("-v ${env.HOME}/.gradle:/home/gradle/.gradle") {
-       sh 'cd complete && ./gradlew build'
-     }
-  }
-  stage('test') {
-     myGradleContainer.inside("-v ${env.HOME}/.gradle:/home/gradle/.gradle") {
-       sh 'cd complete && ./gradlew test'
-     }
-  }
-  stage('publish') {
-    def uploadSpec = """{
-      "files": [
-        {
-          "pattern": "complete/build/libs/gs-gradle-*.jar",
-          "target": "gradle-dev-local/academy/newtech/gs-gradle/1.0/gs-gradle-1.0-docker.jar"
+    def server = Artifactory.server('virtilab.jfrog.io')
+    def rtGradle = Artifactory.newGradleBuild()
+    def buildInfo = Artifactory.newBuildInfo()
+    stage 'Build'
+        git url: 'https://github.com/petersonwsantos/dockerlab-jenkins-java.git'
+
+    stage 'Artifactory configuration'
+        rtGradle.tool = 'gradle' // Tool name from Jenkins configuration
+        rtGradle.deployer repo:'gradle-dev-local',  server: server
+        rtGradle.resolver repo:'gradle-dev', server: server
+
+        stage('Config Build Info') {
+            buildInfo.env.capture = true
+            buildInfo.env.filter.addInclude("*")
         }
-     ]
-    }"""
-    server.upload(uploadSpec)
-  }
+
+        stage('Extra gradle configurations') {
+            rtGradle.usesPlugin = true // Artifactory plugin already defined in build script
+        }
+        stage('Exec Gradle') {
+            rtGradle.run rootDir: "artifactory/", buildFile: 'build.gradle', tasks: 'clean artifactoryPublish', buildInfo: buildInfo
+        }
+        stage('Publish build info') {
+            server.publishBuildInfo buildInfo
+        }
 }
